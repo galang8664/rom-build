@@ -2,6 +2,10 @@
 cd /tmp/rom
 rm -rf .repo
 
+ROM_NAME=LineageOS
+BRANCH=lineage-17.1
+DEVICE="g151"
+
 . build/envsetup.sh
 lunch lineage_g151-userdebug ##edit this
 export CCACHE_DIR=/tmp/ccache  ##use additional flags if you need(optional)
@@ -10,6 +14,7 @@ export USE_CCACHE=1
 ccache -M 20G
 ccache -o compression=true
 ccache -z
+BUILDLOG = log.txt
 
 up(){
 	curl --upload-file $1 https://transfer.sh/
@@ -22,12 +27,75 @@ make_metalava(){
 }
 
 make_rom(){
-	make bacon -j16
-	zip=$(up out/target/product/g151/*zip) ##edit this change from miatoll---> /<your device codename>
-	echo " "
-	echo "$zip"
+	brunch g151 >> $BUILDLOG | tee $BUILDLOG
 }
 
+function sendInfo() {
+	curl -s -X POST https://api.telegram.org/bot$BOT_API_KEY/sendMessage -d chat_id=$CHAT_ID -d "parse_mode=HTML" -d text="$(
+		for POST in "${@}"; do
+			echo "${POST}"
+		done
+	)" &> /dev/null
+}
+
+function sendLog() {
+	curl -F chat_id=$CHAT_ID -F document=@"$1" https://api.telegram.org/bot$BOT_API_KEY/sendDocument &>/dev/null
+}
+
+function sendTele() {
+	curl -F chat_id=$CHAT_ID -F document=@"$1" https://api.telegram.org/bot$BOT_API_KEY/sendDocument &>/dev/null
+}
+
+function startTele() {
+	    sendInfo \
+		"<b>====== Starting Build ROM ======</b>" \
+		"<b>ROM Name      :</b> <code>${ROM_NAME}</code>" \
+		"<b>Branch        :</b> <code>${BRANCH}</code>" \
+		"<b>Device        :</b> <code>${DEVICE}</code>" \
+		"<b>Started at    :</b> <code> $(uname -a)</code>" \
+		"<b>Instance Uptime :</b> <code> $(uptime -p)</code>" \
+		"<b>====== Starting Build ROM ======</b>"
+}
+
+function timeStart() {
+	DATELOG=$(date "+%H%M-%d%m%Y")
+	BUILD_START=$(date +"%s")
+	DATE=`date`
+}
+
+function timeEnd() {
+	BUILD_END=$(date +"%s")
+	DIFF=$(($BUILD_END - $BUILD_START))
+}
+
+function statusBuild() {
+	FILENAME=$(find "out/target/product/$DEVICE/*.zip")
+    if ! [ -a $FILENAME ]; then
+            sendInfo "<b>====== Build ROM Failed ======</b>" \
+             "Build failed Total time elapsed: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
+             echo " ***** Build Failed *****  "
+        sendLog "$BUILDLOG"
+        LOGTRIM="log_trimmed.log"
+        sed -n '/FAILED:/,//p' $BUILDLOG &> $LOGTRIM
+        sendLog "$LOGTRIM"
+        exit 1
+    fi
+	zip=$(up out/target/product/$DEVICE/*zip) ##edit this change from miatoll---> /<your device codename>
+	echo " "
+	echo "$zip"
+
+    sendInfo \
+    "Build Success. Total time elapsed: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds." \
+    "Filename: $FILENAME " \
+	"Link: $zip " \
+    "<b>====== Build ROM Completed ======</b>"
+}
+
+timeStart
+startTele
 make_metalava
-make_rom &
+make_rom
+timeEnd
+statusBuild
+
 sleep 4500 && kill "$!"
