@@ -1,7 +1,7 @@
 #!/bin/bash
 sudo apt install wget
-MANIFEST=git://github.com/LineageOS/android.git
-BRANCH=lineage-17.1  ##edit this
+MANIFEST=git@github.com:Evolution-X/manifest.git
+BRANCH=tiramisu  ##edit this
 
 mkdir -p /tmp/rom
 cd /tmp/rom
@@ -18,9 +18,7 @@ pwd
 ls
 
 ##delete these lines, and replace with your own lines of device sauce
-git clone https://github.com/Andromax-Devices/android_device_haier_g151.git device/haier/g151 --depth=1
-git clone https://github.com/Andromax-Devices/android_device_cyanogen_msm8909-common.git device/cyanogen/msm8909-common --depth=1
-git clone https://github.com/Andromax-Devices/android_kernel_cyanogen_msm89xx.git kernel/cyanogen/msm89xx --depth=1
-git clone https://github.com/Andromax-Devices/proprietary_vendor_haier.git vendor/haier --depth=1
+git clone https://github.com/galang8664/local_manifest.git --depth 1 -b evoxr
+repo sync
 
-cd /tmp/rom
+cd /tmp/rom 
